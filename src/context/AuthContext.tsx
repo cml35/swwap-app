@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthResponse } from '../types/auth';
+import { authService } from '../services/authService';
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -77,11 +78,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      await Promise.all([
-        AsyncStorage.removeItem(AUTH_TOKEN_KEY),
-        AsyncStorage.removeItem(USER_DATA_KEY),
-      ]);
+      // Call the logout endpoint
+      await authService.logout();
 
+      // Clear local state
       setState({
         isAuthenticated: false,
         token: null,
@@ -89,8 +89,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading: false,
       });
     } catch (error) {
-      console.error('Error removing auth data:', error);
-      throw new Error('Failed to remove authentication data');
+      console.error('Error during logout:', error);
+      // Even if the server call fails, we should still clear local state
+      setState({
+        isAuthenticated: false,
+        token: null,
+        user: null,
+        isLoading: false,
+      });
+      throw error;
     }
   };
 

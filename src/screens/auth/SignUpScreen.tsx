@@ -23,10 +23,14 @@ export const SignUpScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [validationErrors, setValidationErrors] = useState<{
     email?: string;
     password?: string;
     confirmPassword?: string;
+    firstName?: string;
+    lastName?: string;
   }>({});
   const navigation = useNavigation<SignUpScreenNavigationProp>();
   const { login } = useAuth();
@@ -34,28 +38,33 @@ export const SignUpScreen = () => {
   const signUpMutation = useMutation({
     mutationFn: authService.signUp,
     onSuccess: (data) => {
+      console.log('Mutation success:', data);
       login(data)
         .then(() => {
           console.log('Sign up successful');
         })
         .catch((error) => {
+          console.error('Login after signup failed:', error);
           Alert.alert('Error', 'Failed to save authentication data');
         });
     },
     onError: (error: Error) => {
+      console.error('Mutation error:', error);
       Alert.alert('Error', error.message || 'Failed to sign up. Please try again.');
     },
   });
 
   const validateForm = (): boolean => {
+    console.log('Validating form with:', { email, password, confirmPassword, firstName, lastName });
     try {
-      signUpSchema.parse({ email, password, confirmPassword });
+      signUpSchema.parse({ email, password, confirmPassword, firstName, lastName });
       setValidationErrors({});
       return true;
     } catch (error: any) {
-      const newErrors: { email?: string; password?: string; confirmPassword?: string } = {};
+      console.log('Validation errors:', error.errors);
+      const newErrors: { email?: string; password?: string; confirmPassword?: string; firstName?: string; lastName?: string } = {};
       error.errors.forEach((err: any) => {
-        const path = err.path[0] as 'email' | 'password' | 'confirmPassword';
+        const path = err.path[0] as 'email' | 'password' | 'confirmPassword' | 'firstName' | 'lastName';
         if (!newErrors[path]) {
           newErrors[path] = err.message;
         }
@@ -66,11 +75,20 @@ export const SignUpScreen = () => {
   };
 
   const handleSignUp = async () => {
+    console.log('Sign up button pressed');
+    console.log('Current form state:', { email, password, confirmPassword, firstName, lastName });
+    
     if (!validateForm()) {
+      console.log('Form validation failed:', validationErrors);
       return;
     }
-
-    signUpMutation.mutate({ email, password, confirmPassword });
+    
+    console.log('Form validation passed, submitting...');
+    try {
+      await signUpMutation.mutateAsync({ email, password, confirmPassword, firstName, lastName });
+    } catch (error) {
+      console.error('Signup error:', error);
+    }
   };
 
   const handleLoginPress = () => {
@@ -84,6 +102,44 @@ export const SignUpScreen = () => {
     >
       <View style={styles.formContainer}>
         <Text style={styles.title}>Create Account</Text>
+
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={[styles.input, validationErrors.firstName && styles.inputError]}
+            placeholder="First Name"
+            value={firstName}
+            onChangeText={(text) => {
+              setFirstName(text);
+              if (validationErrors.firstName) {
+                setValidationErrors(prev => ({ ...prev, firstName: undefined }));
+              }
+            }}
+            autoCapitalize="words"
+            editable={!signUpMutation.isPending}
+          />
+          {validationErrors.firstName && (
+            <Text style={styles.errorText}>{validationErrors.firstName}</Text>
+          )}
+        </View>
+
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={[styles.input, validationErrors.lastName && styles.inputError]}
+            placeholder="Last Name"
+            value={lastName}
+            onChangeText={(text) => {
+              setLastName(text);
+              if (validationErrors.lastName) {
+                setValidationErrors(prev => ({ ...prev, lastName: undefined }));
+              }
+            }}
+            autoCapitalize="words"
+            editable={!signUpMutation.isPending}
+          />
+          {validationErrors.lastName && (
+            <Text style={styles.errorText}>{validationErrors.lastName}</Text>
+          )}
+        </View>
 
         <View style={styles.inputContainer}>
           <TextInput
@@ -148,7 +204,10 @@ export const SignUpScreen = () => {
 
         <TouchableOpacity 
           style={[styles.button, signUpMutation.isPending && styles.buttonDisabled]}
-          onPress={handleSignUp}
+          onPress={() => {
+            console.log('Button pressed');
+            handleSignUp();
+          }}
           disabled={signUpMutation.isPending}
         >
           {signUpMutation.isPending ? (

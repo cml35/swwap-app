@@ -1,19 +1,55 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-  ScrollView,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { authService } from '../services/authService';
+import { RootStackParamList } from '../types/navigation';
 import { useAuth } from '../context/AuthContext';
-import { Ionicons } from '@expo/vector-icons';
+import { useMutation } from '@tanstack/react-query';
+
+type ProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Profile'>;
 
 export const ProfileScreen = () => {
+  const navigation = useNavigation<ProfileScreenNavigationProp>();
   const { user, logout } = useAuth();
 
+  console.log('ProfileScreen rendered, user:', user?.email);
+
+  const logoutMutation = useMutation({
+    mutationKey: ['logout'],
+    mutationFn: async () => {
+      console.log('1. Mutation function starting');
+      const result = await authService.logout();
+      console.log('2. Mutation function completed');
+      return result;
+    },
+    onMutate: () => {
+      console.log('3. onMutate called');
+    },
+    onSuccess: () => {
+      console.log('4. onSuccess called');
+      // Call the logout function from AuthContext
+      logout();
+    },
+    onError: (error) => {
+      console.log('5. onError called with:', error);
+      Alert.alert('Error', 'Failed to logout. Please try again.');
+    },
+  });
+
   const handleLogout = () => {
+    console.log('A. handleLogout called');
+    
+    // Direct mutation test
+    console.log('TEST: Attempting direct mutation');
+    try {
+      logoutMutation.mutate();
+      console.log('TEST: Direct mutation called');
+    } catch (error) {
+      console.error('TEST: Direct mutation error:', error);
+    }
+
+    // Keep the Alert for user confirmation
     Alert.alert(
       'Logout',
       'Are you sure you want to logout?',
@@ -21,120 +57,99 @@ export const ProfileScreen = () => {
         {
           text: 'Cancel',
           style: 'cancel',
+          onPress: () => {
+            console.log('B. Cancel pressed');
+            console.log('B1. Alert dialog dismissed');
+          },
         },
         {
           text: 'Logout',
           style: 'destructive',
-          onPress: async () => {
+          onPress: () => {
+            console.log('C. Logout confirmed, calling mutation');
             try {
-              await logout();
+              console.log('C1. About to call mutation');
+              logoutMutation.mutate();
+              console.log('D. Mutation called successfully');
             } catch (error) {
-              Alert.alert('Error', 'Failed to logout. Please try again.');
+              console.error('E. Error calling mutation:', error);
             }
           },
         },
       ],
-      { cancelable: true }
+      { 
+        cancelable: true,
+        onDismiss: () => console.log('Alert dialog dismissed without selection')
+      }
     );
+    console.log('A2. Alert dialog shown');
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.avatarContainer}>
-          <Ionicons name="person-circle" size={80} color="#007AFF" />
+    <View style={styles.container}>
+      <View style={styles.content}>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account</Text>
+          <Text style={styles.email}>{user?.email}</Text>
+          <TouchableOpacity 
+            style={[styles.button, logoutMutation.isPending && styles.buttonDisabled]} 
+            onPress={handleLogout}
+            disabled={logoutMutation.isPending}
+          >
+            <Text style={styles.buttonText}>
+              {logoutMutation.isPending ? 'Logging out...' : 'Logout'}
+            </Text>
+          </TouchableOpacity>
         </View>
-        <Text style={styles.email}>{user?.email}</Text>
       </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Account Settings</Text>
-        <TouchableOpacity style={styles.menuItem}>
-          <Ionicons name="person-outline" size={24} color="#333" />
-          <Text style={styles.menuText}>Edit Profile</Text>
-          <Ionicons name="chevron-forward" size={24} color="#ccc" />
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.menuItem}>
-          <Ionicons name="notifications-outline" size={24} color="#333" />
-          <Text style={styles.menuText}>Notifications</Text>
-          <Ionicons name="chevron-forward" size={24} color="#ccc" />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.menuItem}>
-          <Ionicons name="shield-outline" size={24} color="#333" />
-          <Text style={styles.menuText}>Privacy & Security</Text>
-          <Ionicons name="chevron-forward" size={24} color="#ccc" />
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity 
-        style={styles.logoutButton}
-        onPress={handleLogout}
-      >
-        <Text style={styles.logoutText}>Logout</Text>
-      </TouchableOpacity>
-    </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: '#f5f5f5',
   },
-  header: {
-    alignItems: 'center',
+  content: {
+    flex: 1,
     padding: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
-  avatarContainer: {
-    marginBottom: 10,
+  section: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 20,
+    marginBottom: 20,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+      },
+      default: {
+        elevation: 2,
+      },
+    }),
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
   },
   email: {
     fontSize: 16,
-    color: '#333',
-    marginTop: 5,
-  },
-  section: {
-    marginTop: 20,
-    backgroundColor: '#fff',
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: '#eee',
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
     color: '#666',
-    marginLeft: 15,
-    marginBottom: 10,
+    marginBottom: 20,
   },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  menuText: {
-    flex: 1,
-    fontSize: 16,
-    color: '#333',
-    marginLeft: 15,
-  },
-  logoutButton: {
-    margin: 20,
-    backgroundColor: '#ff3b30',
+  button: {
+    backgroundColor: '#ff4444',
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
   },
-  logoutText: {
-    color: '#fff',
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  buttonText: {
+    color: 'white',
     fontSize: 16,
     fontWeight: '600',
   },
