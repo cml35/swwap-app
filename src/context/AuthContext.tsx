@@ -59,6 +59,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (response: AuthResponse) => {
     try {
+      console.log('Storing token:', response.token);
       await Promise.all([
         AsyncStorage.setItem(AUTH_TOKEN_KEY, response.token),
         AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(response.user)),
