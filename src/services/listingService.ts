@@ -42,21 +42,26 @@ export const listingService = {
   getListings: async (): Promise<Item[]> => {
     try {
       const token = await AsyncStorage.getItem('@swwap:auth_token');
-      console.log('Token from storage:', token);
+      console.log('Frontend - Token from storage:', token);
+      
       if (!token) {
+        console.log('Frontend - No token found in storage');
         throw new AppError(401, 'Authentication required');
       }
 
       const headers = {
         'Authorization': `Bearer ${token}`,
       };
-      console.log('Request headers:', headers);
+      console.log('Frontend - Request headers:', headers);
+      console.log('Frontend - Making request to:', API_URL);
 
       const response = await fetch(`${API_URL}`, {
         headers,
       });
 
+      console.log('Frontend - Response status:', response.status);
       const result = await response.json();
+      console.log('Frontend - Response body:', result);
 
       if (!response.ok) {
         throw new AppError(
@@ -67,6 +72,11 @@ export const listingService = {
 
       return result;
     } catch (error) {
+      console.error('Frontend - Error details:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       if (error instanceof AppError) {
         throw error;
       }

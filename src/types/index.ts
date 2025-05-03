@@ -3,7 +3,7 @@ export interface Item {
   title: string;
   description: string;
   images: string[];
-  category: string;
+  tags: string[];
   condition: 'New' | 'Like New' | 'Good' | 'Fair' | 'Poor';
   userId: string;
   createdAt: string;

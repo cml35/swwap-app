@@ -42,7 +42,7 @@ export const AddListingScreen = () => {
       title: data.title,
       description: data.description,
       condition: data.condition,
-      category: tags.join(','), // Using tags as categories for now
+      tags: data.tags,
       images: [], // TODO: Implement image upload
       interestedIn: [], // TODO: Implement interested in categories
       location: {
