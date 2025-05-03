@@ -13,12 +13,13 @@ import {
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { listingService } from '../services/listingService';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { Item } from '../types';
+import Toast from 'react-native-toast-message';
 
 type Condition = Item['condition'];
 
@@ -26,11 +27,20 @@ type AddListingScreenNavigationProp = NativeStackNavigationProp<RootStackParamLi
 
 export const AddListingScreen = () => {
   const navigation = useNavigation<AddListingScreenNavigationProp>();
+  const queryClient = useQueryClient();
   const [listingTitle, setListingTitle] = useState('');
   const [description, setDescription] = useState('');
   const [condition, setCondition] = useState<Condition>('Good');
   const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState('');
+
+  const resetForm = () => {
+    setListingTitle('');
+    setDescription('');
+    setCondition('Good');
+    setTags([]);
+    setCurrentTag('');
+  };
 
   const createListingMutation = useMutation({
     mutationFn: (data: {
@@ -51,12 +61,63 @@ export const AddListingScreen = () => {
         address: '',
       },
     }),
-    onSuccess: () => {
-      Alert.alert('Success', 'Listing created successfully!');
-      navigation.goBack();
+    onMutate: async (newListing) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['listings'] });
+
+      // Snapshot the previous value
+      const previousListings = queryClient.getQueryData<Item[]>(['listings']);
+
+      // Optimistically update to the new value
+      const optimisticListing: Item = {
+        id: 'temp-' + Date.now(), // Temporary ID
+        title: newListing.title,
+        description: newListing.description,
+        condition: newListing.condition,
+        tags: newListing.tags,
+        images: [],
+        interestedIn: [],
+        location: {
+          latitude: 0,
+          longitude: 0,
+          address: '',
+        },
+        userId: '', // Will be set by the server
+        createdAt: new Date().toISOString(),
+      };
+
+      queryClient.setQueryData<Item[]>(['listings'], (old = []) => [optimisticListing, ...old]);
+
+      // Return a context object with the snapshotted value
+      return { previousListings };
     },
-    onError: (error: Error) => {
-      Alert.alert('Error', error.message);
+    onError: (err, newListing, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousListings) {
+        queryClient.setQueryData(['listings'], context.previousListings);
+      }
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to create listing. Please try again.',
+        position: 'bottom',
+        visibilityTime: 4000,
+      });
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure data is in sync
+      queryClient.invalidateQueries({ queryKey: ['listings'] });
+    },
+    onSuccess: () => {
+      resetForm(); // Reset form before navigating
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Listing created successfully!',
+        position: 'bottom',
+        visibilityTime: 2000,
+      });
+      navigation.goBack();
     },
   });
 

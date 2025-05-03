@@ -1,8 +1,8 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { View, Text } from 'react-native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
@@ -10,6 +10,8 @@ import { LoginScreen } from './src/screens/auth/LoginScreen';
 import { SignUpScreen } from './src/screens/auth/SignUpScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { AddListingScreen } from './src/screens/AddListingScreen';
+import { ListingsScreen } from './src/screens/ListingsScreen';
+import Toast from 'react-native-toast-message';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -20,6 +22,16 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
+
+// Temporary HomeScreen component
+const HomeScreen = () => (
+  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+    <Text>Home Screen</Text>
+  </View>
+);
 
 const ExploreScreen = () => (
   <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -33,16 +45,6 @@ const MessagesScreen = () => (
   </View>
 );
 
-const Stack = createNativeStackNavigator();
-const Tab = createBottomTabNavigator();
-
-// Temporary HomeScreen component
-const HomeScreen = () => (
-  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-    <Text>Home Screen</Text>
-  </View>
-);
-
 const TabNavigator = () => {
   return (
     <Tab.Navigator
@@ -50,25 +52,75 @@ const TabNavigator = () => {
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap;
 
-          if (route.name === 'Home') {
-            iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Profile') {
-            iconName = focused ? 'person' : 'person-outline';
-          } else {
-            iconName = 'help-outline';
+          switch (route.name) {
+            case 'Home':
+              iconName = focused ? 'home' : 'home-outline';
+              break;
+            case 'Explore':
+              iconName = focused ? 'compass' : 'compass-outline';
+              break;
+            case 'Add':
+              iconName = focused ? 'add-circle' : 'add-circle-outline';
+              break;
+            case 'Messages':
+              iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
+              break;
+            case 'Profile':
+              iconName = focused ? 'person' : 'person-outline';
+              break;
+            default:
+              iconName = 'help-outline';
           }
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: '#007AFF',
         tabBarInactiveTintColor: 'gray',
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '500',
+        },
+        tabBarStyle: {
+          paddingBottom: 5,
+          paddingTop: 5,
+        },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Explore" component={ExploreScreen} />
-      <Tab.Screen name="Add" component={AddListingScreen} />
-      <Tab.Screen name="Messages" component={MessagesScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen 
+        name="Home" 
+        component={HomeScreen}
+        options={{
+          title: 'Home',
+        }}
+      />
+      <Tab.Screen 
+        name="Explore" 
+        component={ExploreScreen}
+        options={{
+          title: 'Explore',
+        }}
+      />
+      <Tab.Screen 
+        name="Add" 
+        component={AddListingScreen}
+        options={{
+          title: 'Add Listing',
+        }}
+      />
+      <Tab.Screen 
+        name="Messages" 
+        component={MessagesScreen}
+        options={{
+          title: 'Messages',
+        }}
+      />
+      <Tab.Screen 
+        name="Profile" 
+        component={ProfileScreen}
+        options={{
+          title: 'Profile',
+        }}
+      />
     </Tab.Navigator>
   );
 };
@@ -80,11 +132,42 @@ const Navigation = () => {
     return null;
   }
 
+  const linking = {
+    prefixes: ['http://localhost:8081'],
+    config: {
+      screens: {
+        Main: {
+          screens: {
+            Home: 'home',
+            Explore: 'explore',
+            Add: 'add-listing',
+            Messages: 'messages',
+            Profile: 'profile',
+          },
+        },
+        ProfileListings: 'profile/listings',
+        Login: 'auth/login',
+        SignUp: 'auth/signup',
+      },
+    },
+  };
+
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
-          <Stack.Screen name="Main" component={TabNavigator} />
+          <>
+            <Stack.Screen name="Main" component={TabNavigator} />
+            <Stack.Screen 
+              name="ProfileListings" 
+              component={ListingsScreen}
+              options={{ 
+                title: 'My Listings',
+                headerShown: true,
+                headerBackTitle: 'Profile',
+              }}
+            />
+          </>
         ) : (
           <>
             <Stack.Screen name="Login" component={LoginScreen} />
@@ -101,6 +184,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Navigation />
+        <Toast />
       </AuthProvider>
     </QueryClientProvider>
   );

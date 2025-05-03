@@ -6,6 +6,7 @@ import { authService } from '../services/authService';
 import { RootStackParamList } from '../types/navigation';
 import { useAuth } from '../context/AuthContext';
 import { useMutation } from '@tanstack/react-query';
+import { Ionicons } from '@expo/vector-icons';
 
 type ProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Profile'>;
 
@@ -91,11 +92,21 @@ export const ProfileScreen = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
           <Text style={styles.email}>{user?.email}</Text>
+          
           <TouchableOpacity 
-            style={[styles.button, logoutMutation.isPending && styles.buttonDisabled]} 
+            style={[styles.button, styles.viewListingsButton]} 
+            onPress={() => navigation.navigate('ProfileListings')}
+          >
+            <Ionicons name="list-outline" size={20} color="white" style={styles.buttonIcon} />
+            <Text style={styles.buttonText}>View Listings</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.button, styles.logoutButton, logoutMutation.isPending && styles.buttonDisabled]} 
             onPress={handleLogout}
             disabled={logoutMutation.isPending}
           >
+            <Ionicons name="log-out-outline" size={20} color="white" style={styles.buttonIcon} />
             <Text style={styles.buttonText}>
               {logoutMutation.isPending ? 'Logging out...' : 'Logout'}
             </Text>
@@ -140,10 +151,18 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   button: {
-    backgroundColor: '#ff4444',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     padding: 15,
     borderRadius: 8,
-    alignItems: 'center',
+    marginBottom: 12,
+  },
+  viewListingsButton: {
+    backgroundColor: '#007AFF',
+  },
+  logoutButton: {
+    backgroundColor: '#ff4444',
   },
   buttonDisabled: {
     opacity: 0.7,
@@ -152,5 +171,8 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  buttonIcon: {
+    marginRight: 8,
   },
 }); 
