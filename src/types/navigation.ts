@@ -6,6 +6,9 @@ export type RootStackParamList = {
   // Main app routes
   Main: undefined;
   ProfileListings: undefined;
+  ListingDetails: {
+    listingId: string;
+  };
 };
 
 export type TabParamList = {

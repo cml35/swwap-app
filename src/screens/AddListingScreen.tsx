@@ -100,7 +100,7 @@ export const AddListingScreen = () => {
         type: 'error',
         text1: 'Error',
         text2: 'Failed to create listing. Please try again.',
-        position: 'bottom',
+        position: 'top',
         visibilityTime: 4000,
       });
     },
@@ -114,7 +114,7 @@ export const AddListingScreen = () => {
         type: 'success',
         text1: 'Success',
         text2: 'Listing created successfully!',
-        position: 'bottom',
+        position: 'top',
         visibilityTime: 2000,
       });
       navigation.goBack();

@@ -11,6 +11,7 @@ import { SignUpScreen } from './src/screens/auth/SignUpScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { AddListingScreen } from './src/screens/AddListingScreen';
 import { ListingsScreen } from './src/screens/ListingsScreen';
+import { ListingDetailsScreen } from './src/screens/ListingDetailsScreen';
 import Toast from 'react-native-toast-message';
 
 // Create a client
@@ -165,6 +166,14 @@ const Navigation = () => {
                 title: 'My Listings',
                 headerShown: true,
                 headerBackTitle: 'Profile',
+              }}
+            />
+            <Stack.Screen 
+              name="ListingDetails" 
+              component={ListingDetailsScreen}
+              options={{ 
+                title: 'Listing Details',
+                headerShown: true,
               }}
             />
           </>

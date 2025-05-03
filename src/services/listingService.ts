@@ -86,28 +86,49 @@ export const listingService = {
 
   getListingById: async (id: string): Promise<Item> => {
     try {
+      console.log('Frontend - Starting getListingById for id:', id);
       const token = await AsyncStorage.getItem('@swwap:auth_token');
+      console.log('Frontend - Token exists:', !!token);
+      
       if (!token) {
+        console.log('Frontend - No token found');
         throw new AppError(401, 'Authentication required');
       }
 
-      const response = await fetch(`${API_URL}/${id}`, {
+      const url = `${API_URL}/${id}`;
+      console.log('Frontend - Making GET request to:', url);
+      console.log('Frontend - Request headers:', {
+        'Authorization': `Bearer ${token}`,
+      });
+
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
 
+      console.log('Frontend - Response status:', response.status);
+      console.log('Frontend - Response headers:', response.headers);
+      
       const result = await response.json();
+      console.log('Frontend - Response body:', result);
 
       if (!response.ok) {
+        console.log('Frontend - Error response:', result);
         throw new AppError(
           response.status,
           result.message || 'Failed to fetch listing'
         );
       }
 
+      console.log('Frontend - Successfully fetched listing');
       return result;
     } catch (error) {
+      console.error('Frontend - Error in getListingById:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       if (error instanceof AppError) {
         throw error;
       }
@@ -117,13 +138,25 @@ export const listingService = {
 
   updateListing: async (id: string, data: Partial<Item>): Promise<Item> => {
     try {
+      console.log('Frontend - Starting updateListing for id:', id);
       const token = await AsyncStorage.getItem('@swwap:auth_token');
+      console.log('Frontend - Token exists:', !!token);
+      
       if (!token) {
+        console.log('Frontend - No token found');
         throw new AppError(401, 'Authentication required');
       }
 
-      const response = await fetch(`${API_URL}/${id}`, {
-        method: 'PATCH',
+      const url = `${API_URL}/${id}`;
+      console.log('Frontend - Making PUT request to:', url);
+      console.log('Frontend - Request headers:', {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      });
+      console.log('Frontend - Request body:', data);
+
+      const response = await fetch(url, {
+        method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -131,17 +164,28 @@ export const listingService = {
         body: JSON.stringify(data),
       });
 
+      console.log('Frontend - Response status:', response.status);
+      console.log('Frontend - Response headers:', response.headers);
+      
       const result = await response.json();
+      console.log('Frontend - Response body:', result);
 
       if (!response.ok) {
+        console.log('Frontend - Error response:', result);
         throw new AppError(
           response.status,
           result.message || 'Failed to update listing'
         );
       }
 
+      console.log('Frontend - Successfully updated listing');
       return result;
     } catch (error) {
+      console.error('Frontend - Error in updateListing:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       if (error instanceof AppError) {
         throw error;
       }
@@ -149,28 +193,51 @@ export const listingService = {
     }
   },
 
-  deleteListing: async (id: string): Promise<void> => {
+  removeListing: async (id: string): Promise<void> => {
     try {
+      console.log('Frontend - Starting removeListing for id:', id);
       const token = await AsyncStorage.getItem('@swwap:auth_token');
+      console.log('Frontend - Token exists:', !!token);
+      console.log('Frontend - Token value:', token);
+      
       if (!token) {
+        console.log('Frontend - No token found');
         throw new AppError(401, 'Authentication required');
       }
 
-      const response = await fetch(`${API_URL}/${id}`, {
+      const url = `${API_URL}/remove/${id}`;
+      console.log('Frontend - Making DELETE request to:', url);
+      console.log('Frontend - Request headers:', {
+        'Authorization': `Bearer ${token}`,
+      });
+
+      const response = await fetch(url, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
 
+      console.log('Frontend - Response status:', response.status);
+      console.log('Frontend - Response headers:', response.headers);
+      
+      const result = await response.json();
+      console.log('Frontend - Response body:', result);
+
       if (!response.ok) {
-        const result = await response.json();
+        console.log('Frontend - Error response:', result);
         throw new AppError(
           response.status,
           result.message || 'Failed to delete listing'
         );
       }
+      console.log('Frontend - Successfully removed listing');
     } catch (error) {
+      console.error('Frontend - Error in removeListing:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       if (error instanceof AppError) {
         throw error;
       }
