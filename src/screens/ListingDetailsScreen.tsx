@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   KeyboardAvoidingView,
   ActivityIndicator,
   Alert,
+  Image,
+  Dimensions,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +22,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { Item } from '../types';
 import Toast from 'react-native-toast-message';
+import { ImageUploadZone } from '../components/ImageUploadZone';
 
 type Condition = Item['condition'];
 
@@ -33,32 +36,19 @@ export const ListingDetailsScreen = () => {
   const { listingId } = route.params;
 
   const [isEditing, setIsEditing] = useState(false);
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [condition, setCondition] = useState<Condition>('Good');
-  const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState('');
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const tagInputRef = useRef<TextInput>(null);
 
   const { data: listing, isLoading, error } = useQuery<Item>({
     queryKey: ['listing', listingId],
     queryFn: () => listingService.getListingById(listingId),
   });
 
-  React.useEffect(() => {
-    if (listing) {
-      setTitle(listing.title);
-      setDescription(listing.description);
-      setCondition(listing.condition);
-      setTags(listing.tags);
-    }
-  }, [listing]);
-
   const updateListingMutation = useMutation({
     mutationFn: (data: Partial<Item>) => listingService.updateListing(listingId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['listing', listingId] });
-      queryClient.invalidateQueries({ queryKey: ['listings'] });
-      setIsEditing(false);
       Toast.show({
         type: 'success',
         text1: 'Success',
@@ -66,6 +56,7 @@ export const ListingDetailsScreen = () => {
         position: 'top',
         visibilityTime: 2000,
       });
+      setIsEditing(false);
     },
     onError: (error) => {
       Toast.show({
@@ -78,35 +69,53 @@ export const ListingDetailsScreen = () => {
     },
   });
 
-  const handleAddTag = () => {
-    if (currentTag.trim() && !tags.includes(currentTag.trim())) {
-      setTags([...tags, currentTag.trim()]);
-      setCurrentTag('');
+  // Only update selectedImages when listing changes
+  React.useEffect(() => {
+    if (listing?.images) {
+      setSelectedImages(listing.images);
     }
-  };
+  }, [listing?.images]);
 
-  const handleRemoveTag = (tagToRemove: string) => {
-    setTags(tags.filter(tag => tag !== tagToRemove));
-  };
+  const handleImagesSelected = useCallback((urls: string[]) => {
+    setSelectedImages(urls);
+  }, []);
 
-  const handleSave = () => {
-    if (!title.trim()) {
+  const handleSave = useCallback(() => {
+    if (!listing) return;
+
+    if (!listing.title.trim()) {
       Alert.alert('Error', 'Please enter a listing title');
       return;
     }
 
-    if (!description.trim()) {
+    if (!listing.description.trim()) {
       Alert.alert('Error', 'Please enter a description');
       return;
     }
 
     updateListingMutation.mutate({
-      title: title.trim(),
-      description: description.trim(),
-      condition,
-      tags,
+      ...listing,
+      images: selectedImages,
     });
-  };
+  }, [listing, selectedImages, updateListingMutation]);
+
+  const handleAddTag = useCallback(() => {
+    if (currentTag.trim() && !listing?.tags.includes(currentTag.trim())) {
+      const newTags = [...(listing?.tags || []), currentTag.trim()];
+      updateListingMutation.mutate({
+        tags: newTags,
+      });
+      setCurrentTag('');
+      tagInputRef.current?.focus();
+    }
+  }, [currentTag, listing?.tags, updateListingMutation]);
+
+  const handleRemoveTag = useCallback((tagToRemove: string) => {
+    const newTags = (listing?.tags || []).filter(tag => tag !== tagToRemove);
+    updateListingMutation.mutate({
+      tags: newTags,
+    });
+  }, [listing?.tags, updateListingMutation]);
 
   if (isLoading) {
     return (
@@ -166,14 +175,14 @@ export const ListingDetailsScreen = () => {
             {isEditing ? (
               <TextInput
                 style={styles.input}
-                value={title}
-                onChangeText={setTitle}
+                value={listing?.title}
+                onChangeText={(text) => updateListingMutation.mutate({ ...listing, title: text })}
                 placeholder="Enter listing title"
                 placeholderTextColor="#999"
                 maxLength={100}
               />
             ) : (
-              <Text style={styles.text}>{title}</Text>
+              <Text style={styles.text}>{listing?.title}</Text>
             )}
           </View>
 
@@ -183,8 +192,8 @@ export const ListingDetailsScreen = () => {
             {isEditing ? (
               <TextInput
                 style={[styles.input, styles.textArea]}
-                value={description}
-                onChangeText={setDescription}
+                value={listing?.description}
+                onChangeText={(text) => updateListingMutation.mutate({ ...listing, description: text })}
                 placeholder="Describe your item"
                 placeholderTextColor="#999"
                 multiline
@@ -192,7 +201,7 @@ export const ListingDetailsScreen = () => {
                 textAlignVertical="top"
               />
             ) : (
-              <Text style={styles.text}>{description}</Text>
+              <Text style={styles.text}>{listing?.description}</Text>
             )}
           </View>
 
@@ -202,8 +211,8 @@ export const ListingDetailsScreen = () => {
             {isEditing ? (
               <View style={styles.pickerContainer}>
                 <Picker
-                  selectedValue={condition}
-                  onValueChange={(value: Condition) => setCondition(value)}
+                  selectedValue={listing?.condition}
+                  onValueChange={(value: Condition) => updateListingMutation.mutate({ ...listing, condition: value })}
                   style={styles.picker}
                   mode="dialog"
                   dropdownIconColor="#333"
@@ -216,9 +225,46 @@ export const ListingDetailsScreen = () => {
                 </Picker>
               </View>
             ) : (
-              <Text style={styles.text}>{condition}</Text>
+              <Text style={styles.text}>{listing?.condition}</Text>
             )}
           </View>
+
+          {/* Image Gallery or Image Upload Zone */}
+          {isEditing ? (
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Images</Text>
+              <ImageUploadZone
+                onImagesSelected={handleImagesSelected}
+                maxFiles={5}
+                initialImages={selectedImages}
+              />
+            </View>
+          ) : (
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Images</Text>
+              {listing?.images && listing.images.length > 0 ? (
+                <View style={styles.imageGalleryContainer}>
+                  <ScrollView 
+                    horizontal 
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.imageGallery}
+                  >
+                    {listing.images.map((imageUrl, index) => (
+                      <View key={index} style={styles.imageWrapper}>
+                        <Image
+                          source={{ uri: imageUrl }}
+                          style={styles.image}
+                          resizeMode="contain"
+                        />
+                      </View>
+                    ))}
+                  </ScrollView>
+                </View>
+              ) : (
+                <Text style={styles.noImagesText}>No images available</Text>
+              )}
+            </View>
+          )}
 
           {/* Tags Section */}
           <View style={styles.inputContainer}>
@@ -227,6 +273,7 @@ export const ListingDetailsScreen = () => {
               <>
                 <View style={styles.tagInputContainer}>
                   <TextInput
+                    ref={tagInputRef}
                     style={styles.tagInput}
                     value={currentTag}
                     onChangeText={setCurrentTag}
@@ -242,7 +289,7 @@ export const ListingDetailsScreen = () => {
                   </TouchableOpacity>
                 </View>
                 <View style={styles.tagsContainer}>
-                  {tags.map((tag, index) => (
+                  {listing?.tags.map((tag, index) => (
                     <View key={index} style={styles.tag}>
                       <Text style={styles.tagText}>#{tag}</Text>
                       <TouchableOpacity
@@ -257,7 +304,7 @@ export const ListingDetailsScreen = () => {
               </>
             ) : (
               <View style={styles.tagsContainer}>
-                {tags.map((tag, index) => (
+                {listing?.tags.map((tag, index) => (
                   <View key={index} style={styles.tag}>
                     <Text style={styles.tagText}>#{tag}</Text>
                   </View>
@@ -411,5 +458,30 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 16,
     color: '#ff4444',
+  },
+  noImagesText: {
+    fontSize: 16,
+    color: '#666',
+    fontStyle: 'italic',
+    padding: 12,
+  },
+  imageGalleryContainer: {
+    marginBottom: 20,
+  },
+  imageGallery: {
+    flexDirection: 'row',
+  },
+  imageWrapper: {
+    width: 300,
+    height: 300,
+    marginRight: 10,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#f0f0f0',
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'contain',
   },
 }); 

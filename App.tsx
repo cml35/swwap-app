@@ -138,6 +138,7 @@ const Navigation = () => {
     config: {
       screens: {
         Main: {
+          path: '',
           screens: {
             Home: 'home',
             Explore: 'explore',
@@ -147,6 +148,7 @@ const Navigation = () => {
           },
         },
         ProfileListings: 'profile/listings',
+        ListingDetails: 'listing/:listingId',
         Login: 'auth/login',
         SignUp: 'auth/signup',
       },
@@ -179,8 +181,22 @@ const Navigation = () => {
           </>
         ) : (
           <>
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="SignUp" component={SignUpScreen} />
+            <Stack.Screen 
+              name="Login" 
+              component={LoginScreen}
+              options={{
+                headerShown: true,
+                title: 'Login',
+              }}
+            />
+            <Stack.Screen 
+              name="SignUp" 
+              component={SignUpScreen}
+              options={{
+                headerShown: true,
+                title: 'Sign Up',
+              }}
+            />
           </>
         )}
       </Stack.Navigator>

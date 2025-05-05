@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,6 @@ import {
   Platform,
   KeyboardAvoidingView,
   Alert,
-  ActivityIndicator,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,99 +16,40 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { listingService } from '../services/listingService';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../types/navigation';
+import { TabParamList } from '../types/navigation';
 import { Item } from '../types';
 import Toast from 'react-native-toast-message';
+import { ImageUploadZone } from '../components/ImageUploadZone';
 
 type Condition = Item['condition'];
 
-type AddListingScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Add'>;
+type AddListingScreenNavigationProp = NativeStackNavigationProp<TabParamList, 'Add'>;
 
 export const AddListingScreen = () => {
   const navigation = useNavigation<AddListingScreenNavigationProp>();
   const queryClient = useQueryClient();
-  const [listingTitle, setListingTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [condition, setCondition] = useState<Condition>('Good');
-  const [tags, setTags] = useState<string[]>([]);
-  const [currentTag, setCurrentTag] = useState('');
+  const tagInputRef = useRef<TextInput>(null);
 
-  const resetForm = () => {
-    setListingTitle('');
-    setDescription('');
-    setCondition('Good');
-    setTags([]);
-    setCurrentTag('');
-  };
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentTag, setCurrentTag] = useState('');
+  const [formData, setFormData] = useState<Omit<Item, 'id' | 'createdAt' | 'userId'>>({
+    title: '',
+    description: '',
+    condition: 'Good',
+    tags: [],
+    images: [],
+    interestedIn: [],
+    location: {
+      latitude: 0,
+      longitude: 0,
+      address: '',
+    },
+  });
 
   const createListingMutation = useMutation({
-    mutationFn: (data: {
-      title: string;
-      description: string;
-      condition: Condition;
-      tags: string[];
-    }) => listingService.createListing({
-      title: data.title,
-      description: data.description,
-      condition: data.condition,
-      tags: data.tags,
-      images: [], // TODO: Implement image upload
-      interestedIn: [], // TODO: Implement interested in categories
-      location: {
-        latitude: 0, // TODO: Implement location
-        longitude: 0,
-        address: '',
-      },
-    }),
-    onMutate: async (newListing) => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['listings'] });
-
-      // Snapshot the previous value
-      const previousListings = queryClient.getQueryData<Item[]>(['listings']);
-
-      // Optimistically update to the new value
-      const optimisticListing: Item = {
-        id: 'temp-' + Date.now(), // Temporary ID
-        title: newListing.title,
-        description: newListing.description,
-        condition: newListing.condition,
-        tags: newListing.tags,
-        images: [],
-        interestedIn: [],
-        location: {
-          latitude: 0,
-          longitude: 0,
-          address: '',
-        },
-        userId: '', // Will be set by the server
-        createdAt: new Date().toISOString(),
-      };
-
-      queryClient.setQueryData<Item[]>(['listings'], (old = []) => [optimisticListing, ...old]);
-
-      // Return a context object with the snapshotted value
-      return { previousListings };
-    },
-    onError: (err, newListing, context) => {
-      // If the mutation fails, use the context returned from onMutate to roll back
-      if (context?.previousListings) {
-        queryClient.setQueryData(['listings'], context.previousListings);
-      }
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to create listing. Please try again.',
-        position: 'top',
-        visibilityTime: 4000,
-      });
-    },
-    onSettled: () => {
-      // Always refetch after error or success to ensure data is in sync
-      queryClient.invalidateQueries({ queryKey: ['listings'] });
-    },
+    mutationFn: (data: Omit<Item, 'id' | 'createdAt' | 'userId'>) => listingService.createListing(data),
     onSuccess: () => {
-      resetForm(); // Reset form before navigating
+      queryClient.invalidateQueries({ queryKey: ['listings'] });
       Toast.show({
         type: 'success',
         text1: 'Success',
@@ -119,46 +59,69 @@ export const AddListingScreen = () => {
       });
       navigation.goBack();
     },
+    onError: (error) => {
+      setIsSubmitting(false);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to create listing. Please try again.',
+        position: 'top',
+        visibilityTime: 4000,
+      });
+    },
   });
 
-  const handleAddTag = () => {
-    if (currentTag.trim() && !tags.includes(currentTag.trim())) {
-      setTags([...tags, currentTag.trim()]);
+  const handleTitleChange = useCallback((text: string) => {
+    setFormData(prev => ({ ...prev, title: text }));
+  }, []);
+
+  const handleDescriptionChange = useCallback((text: string) => {
+    setFormData(prev => ({ ...prev, description: text }));
+  }, []);
+
+  const handleConditionChange = useCallback((value: Condition) => {
+    setFormData(prev => ({ ...prev, condition: value }));
+  }, []);
+
+  const handleAddTag = useCallback(() => {
+    if (currentTag.trim() && !formData.tags.includes(currentTag.trim())) {
+      setFormData(prev => ({
+        ...prev,
+        tags: [...prev.tags, currentTag.trim()],
+      }));
       setCurrentTag('');
+      tagInputRef.current?.focus();
     }
-  };
+  }, [currentTag, formData.tags]);
 
-  const handleRemoveTag = (tagToRemove: string) => {
-    setTags(tags.filter(tag => tag !== tagToRemove));
-  };
+  const handleRemoveTag = useCallback((tagToRemove: string) => {
+    setFormData(prev => ({
+      ...prev,
+      tags: prev.tags.filter(tag => tag !== tagToRemove),
+    }));
+  }, []);
 
-  const handleSave = () => {
-    if (!listingTitle.trim()) {
+  const handleImagesSelected = useCallback((urls: string[]) => {
+    setFormData(prev => ({
+      ...prev,
+      images: urls,
+    }));
+  }, []);
+
+  const handleSubmit = useCallback(() => {
+    if (!formData.title.trim()) {
       Alert.alert('Error', 'Please enter a listing title');
       return;
     }
 
-    if (!description.trim()) {
+    if (!formData.description.trim()) {
       Alert.alert('Error', 'Please enter a description');
       return;
     }
 
-    createListingMutation.mutate({
-      title: listingTitle.trim(),
-      description: description.trim(),
-      condition,
-      tags,
-    });
-  };
-
-  if (createListingMutation.isPending) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Creating listing...</Text>
-      </View>
-    );
-  }
+    setIsSubmitting(true);
+    createListingMutation.mutate(formData);
+  }, [formData, createListingMutation]);
 
   return (
     <KeyboardAvoidingView
@@ -167,13 +130,23 @@ export const AddListingScreen = () => {
     >
       <ScrollView style={styles.scrollView}>
         <View style={styles.formContainer}>
+          {/* Header with Back button only */}
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="arrow-back" size={24} color="#007AFF" />
+            </TouchableOpacity>
+          </View>
+
           {/* Listing Title */}
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Listing Title</Text>
             <TextInput
               style={styles.input}
-              value={listingTitle}
-              onChangeText={setListingTitle}
+              value={formData.title}
+              onChangeText={handleTitleChange}
               placeholder="Enter listing title"
               placeholderTextColor="#999"
               maxLength={100}
@@ -185,8 +158,8 @@ export const AddListingScreen = () => {
             <Text style={styles.label}>Description</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
-              value={description}
-              onChangeText={setDescription}
+              value={formData.description}
+              onChangeText={handleDescriptionChange}
               placeholder="Describe your item"
               placeholderTextColor="#999"
               multiline
@@ -195,74 +168,33 @@ export const AddListingScreen = () => {
             />
           </View>
 
-          {/* Condition Dropdown */}
+          {/* Condition */}
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Condition</Text>
             <View style={styles.pickerContainer}>
               <Picker
-                selectedValue={condition}
-                onValueChange={(value: Condition) => setCondition(value)}
+                selectedValue={formData.condition}
+                onValueChange={handleConditionChange}
                 style={styles.picker}
                 mode="dialog"
                 dropdownIconColor="#333"
               >
-                <Picker.Item 
-                  label="New" 
-                  value="New" 
-                  style={{ 
-                    height: 50,
-                    fontSize: 16,
-                    color: '#333'
-                  }}
-                />
-                <Picker.Item 
-                  label="Like New" 
-                  value="Like New" 
-                  style={{ 
-                    height: 50,
-                    fontSize: 16,
-                    color: '#333'
-                  }}
-                />
-                <Picker.Item 
-                  label="Good" 
-                  value="Good" 
-                  style={{ 
-                    height: 50,
-                    fontSize: 16,
-                    color: '#333'
-                  }}
-                />
-                <Picker.Item 
-                  label="Fair" 
-                  value="Fair" 
-                  style={{ 
-                    height: 50,
-                    fontSize: 16,
-                    color: '#333'
-                  }}
-                />
-                <Picker.Item 
-                  label="Poor" 
-                  value="Poor" 
-                  style={{ 
-                    height: 50,
-                    fontSize: 16,
-                    color: '#333'
-                  }}
-                />
+                <Picker.Item label="New" value="New" />
+                <Picker.Item label="Like New" value="Like New" />
+                <Picker.Item label="Good" value="Good" />
+                <Picker.Item label="Fair" value="Fair" />
+                <Picker.Item label="Poor" value="Poor" />
               </Picker>
             </View>
           </View>
 
-          {/* Image Upload Section */}
+          {/* Image Upload Zone */}
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Images</Text>
-            <TouchableOpacity style={styles.imageUploadContainer}>
-              <Ionicons name="cloud-upload-outline" size={32} color="#666" />
-              <Text style={styles.uploadText}>Tap to upload images</Text>
-              <Text style={styles.uploadSubtext}>Max 5 images</Text>
-            </TouchableOpacity>
+            <ImageUploadZone
+              onImagesSelected={handleImagesSelected}
+              maxFiles={5}
+            />
           </View>
 
           {/* Tags Section */}
@@ -270,6 +202,7 @@ export const AddListingScreen = () => {
             <Text style={styles.label}>Tags</Text>
             <View style={styles.tagInputContainer}>
               <TextInput
+                ref={tagInputRef}
                 style={styles.tagInput}
                 value={currentTag}
                 onChangeText={setCurrentTag}
@@ -285,7 +218,7 @@ export const AddListingScreen = () => {
               </TouchableOpacity>
             </View>
             <View style={styles.tagsContainer}>
-              {tags.map((tag, index) => (
+              {formData.tags.map((tag, index) => (
                 <View key={index} style={styles.tag}>
                   <Text style={styles.tagText}>#{tag}</Text>
                   <TouchableOpacity
@@ -298,17 +231,21 @@ export const AddListingScreen = () => {
               ))}
             </View>
           </View>
-
-          {/* Save Button */}
-          <TouchableOpacity
-            style={styles.saveButton}
-            onPress={handleSave}
-            disabled={createListingMutation.isPending}
-          >
-            <Text style={styles.saveButtonText}>Save Listing</Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Fixed Save Button at bottom */}
+      <View style={styles.bottomButtonContainer}>
+        <TouchableOpacity
+          style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+          onPress={handleSubmit}
+          disabled={isSubmitting}
+        >
+          <Text style={styles.submitButtonText}>
+            {isSubmitting ? 'Creating...' : 'Create Listing'}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </KeyboardAvoidingView>
   );
 };
@@ -323,6 +260,47 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     padding: 16,
+    paddingBottom: 100, // Add padding to prevent content from being hidden behind the button
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  backButton: {
+    padding: 8,
+  },
+  bottomButtonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  submitButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  submitButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
+  submitButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   inputContainer: {
     marginBottom: 20,
@@ -358,25 +336,6 @@ const styles = StyleSheet.create({
     margin: 0,
     padding: 0,
     backgroundColor: '#fff',
-  },
-  imageUploadContainer: {
-    borderWidth: 2,
-    borderColor: '#ddd',
-    borderStyle: 'dashed',
-    borderRadius: 8,
-    padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  uploadText: {
-    marginTop: 8,
-    fontSize: 16,
-    color: '#666',
-  },
-  uploadSubtext: {
-    marginTop: 4,
-    fontSize: 14,
-    color: '#999',
   },
   tagInputContainer: {
     flexDirection: 'row',
@@ -415,28 +374,5 @@ const styles = StyleSheet.create({
   },
   removeTagButton: {
     marginLeft: 4,
-  },
-  saveButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#666',
   },
 }); 
