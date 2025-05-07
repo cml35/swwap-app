@@ -126,4 +126,21 @@ export const authService = {
       throw new AppError(500, 'Failed to connect to authentication service');
     }
   },
+
+  updateProfile: async (data: { firstName: string; lastName: string; email: string }): Promise<AuthResponse> => {
+    const response = await fetch('http://localhost:3000/auth/profile', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to update profile');
+    }
+
+    return response.json();
+  },
 }; 

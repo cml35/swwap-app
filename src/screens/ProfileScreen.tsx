@@ -14,43 +14,21 @@ export const ProfileScreen = () => {
   const navigation = useNavigation<ProfileScreenNavigationProp>();
   const { user, logout } = useAuth();
 
-  console.log('ProfileScreen rendered, user:', user?.email);
-
   const logoutMutation = useMutation({
     mutationKey: ['logout'],
     mutationFn: async () => {
-      console.log('1. Mutation function starting');
       const result = await authService.logout();
-      console.log('2. Mutation function completed');
       return result;
     },
-    onMutate: () => {
-      console.log('3. onMutate called');
-    },
     onSuccess: () => {
-      console.log('4. onSuccess called');
-      // Call the logout function from AuthContext
       logout();
     },
     onError: (error) => {
-      console.log('5. onError called with:', error);
       Alert.alert('Error', 'Failed to logout. Please try again.');
     },
   });
 
   const handleLogout = () => {
-    console.log('A. handleLogout called');
-    
-    // Direct mutation test
-    console.log('TEST: Attempting direct mutation');
-    try {
-      logoutMutation.mutate();
-      console.log('TEST: Direct mutation called');
-    } catch (error) {
-      console.error('TEST: Direct mutation error:', error);
-    }
-
-    // Keep the Alert for user confirmation
     Alert.alert(
       'Logout',
       'Are you sure you want to logout?',
@@ -58,22 +36,15 @@ export const ProfileScreen = () => {
         {
           text: 'Cancel',
           style: 'cancel',
-          onPress: () => {
-            console.log('B. Cancel pressed');
-            console.log('B1. Alert dialog dismissed');
-          },
         },
         {
           text: 'Logout',
           style: 'destructive',
           onPress: () => {
-            console.log('C. Logout confirmed, calling mutation');
             try {
-              console.log('C1. About to call mutation');
               logoutMutation.mutate();
-              console.log('D. Mutation called successfully');
             } catch (error) {
-              console.error('E. Error calling mutation:', error);
+              console.error('Error calling mutation:', error);
             }
           },
         },
@@ -83,24 +54,38 @@ export const ProfileScreen = () => {
         onDismiss: () => console.log('Alert dialog dismissed without selection')
       }
     );
-    console.log('A2. Alert dialog shown');
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.content}>
+        {/* User Info Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
-          <Text style={styles.email}>{user?.email}</Text>
-          
-          <TouchableOpacity 
-            style={[styles.button, styles.viewListingsButton]} 
-            onPress={() => navigation.navigate('ProfileListings')}
-          >
-            <Ionicons name="list-outline" size={20} color="white" style={styles.buttonIcon} />
-            <Text style={styles.buttonText}>View Listings</Text>
-          </TouchableOpacity>
+          <View style={styles.userInfo}>
+            <View style={styles.avatarContainer}>
+              <Text style={styles.avatarText}>
+                {user?.firstName?.[0]}{user?.lastName?.[0]}
+              </Text>
+            </View>
+            <Text style={styles.name}>{user?.firstName} {user?.lastName}</Text>
+            <Text style={styles.email}>{user?.email}</Text>
+          </View>
+        </View>
 
+        {/* Settings Section */}
+        <View style={styles.section}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('Settings')}
+          >
+            <Ionicons name="settings-outline" size={24} color="#333" style={styles.menuIcon} />
+            <Text style={styles.menuText}>Settings</Text>
+            <Ionicons name="chevron-forward" size={24} color="#999" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Logout Section */}
+        <View style={styles.section}>
           <TouchableOpacity 
             style={[styles.button, styles.logoutButton, logoutMutation.isPending && styles.buttonDisabled]} 
             onPress={handleLogout}
@@ -140,15 +125,45 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  sectionTitle: {
-    fontSize: 18,
+  userInfo: {
+    alignItems: 'center',
+  },
+  avatarContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  avatarText: {
+    fontSize: 32,
     fontWeight: 'bold',
-    marginBottom: 15,
+    color: 'white',
+  },
+  name: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
   },
   email: {
     fontSize: 16,
     color: '#666',
-    marginBottom: 20,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  menuIcon: {
+    marginRight: 12,
+  },
+  menuText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#333',
   },
   button: {
     flexDirection: 'row',
@@ -156,10 +171,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 15,
     borderRadius: 8,
-    marginBottom: 12,
-  },
-  viewListingsButton: {
-    backgroundColor: '#007AFF',
   },
   logoutButton: {
     backgroundColor: '#ff4444',

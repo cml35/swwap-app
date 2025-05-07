@@ -10,6 +10,8 @@ export type RootStackParamList = {
   ListingDetails: {
     listingId: string;
   };
+  Settings: undefined;
+  AccountSettings: undefined;
 };
 
 export type TabParamList = {

@@ -14,6 +14,8 @@ import { ListingsScreen } from './src/screens/ListingsScreen';
 import { ListingDetailsScreen } from './src/screens/ListingDetailsScreen';
 import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
+import { SettingsScreen } from './src/screens/SettingsScreen';
+import { AccountSettingsScreen } from './src/screens/AccountSettingsScreen';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -106,15 +108,11 @@ const TabNavigator = () => {
       />
       <Tab.Screen 
         name="Add" 
-        component={HomeScreen}
+        component={AddListingScreen}
         options={{
           title: 'Add',
-        }}
-        listeners={{
-          tabPress: (e) => {
-            e.preventDefault();
-            navigation.navigate('AddListing');
-          },
+          headerShown: true,
+          headerTitle: 'Add Listing',
         }}
       />
       <Tab.Screen 
@@ -156,7 +154,8 @@ const Navigation = () => {
             Profile: 'profile',
           },
         },
-        AddListing: 'add-listing',
+        Settings: 'settings',
+        AccountSettings: 'settings/account',
         ProfileListings: 'profile/listings',
         ListingDetails: 'listing/:listingId',
         Login: 'auth/login',
@@ -172,13 +171,21 @@ const Navigation = () => {
           <>
             <Stack.Screen name="Main" component={TabNavigator} />
             <Stack.Screen 
-              name="AddListing" 
-              component={AddListingScreen}
+              name="Settings" 
+              component={SettingsScreen}
               options={{ 
-                title: 'Add Listing',
+                title: 'Settings',
                 headerShown: true,
-                headerBackTitle: 'Back',
-                headerBackVisible: true,
+                headerBackTitle: 'Profile',
+              }}
+            />
+            <Stack.Screen 
+              name="AccountSettings" 
+              component={AccountSettingsScreen}
+              options={{ 
+                title: 'Account Settings',
+                headerShown: true,
+                headerBackTitle: 'Settings',
               }}
             />
             <Stack.Screen 
