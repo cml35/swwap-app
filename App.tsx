@@ -13,6 +13,7 @@ import { AddListingScreen } from './src/screens/AddListingScreen';
 import { ListingsScreen } from './src/screens/ListingsScreen';
 import { ListingDetailsScreen } from './src/screens/ListingDetailsScreen';
 import Toast from 'react-native-toast-message';
+import { useNavigation } from '@react-navigation/native';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -47,6 +48,8 @@ const MessagesScreen = () => (
 );
 
 const TabNavigator = () => {
+  const navigation = useNavigation();
+  
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -103,9 +106,15 @@ const TabNavigator = () => {
       />
       <Tab.Screen 
         name="Add" 
-        component={AddListingScreen}
+        component={HomeScreen}
         options={{
-          title: 'Add Listing',
+          title: 'Add',
+        }}
+        listeners={{
+          tabPress: (e) => {
+            e.preventDefault();
+            navigation.navigate('AddListing');
+          },
         }}
       />
       <Tab.Screen 
@@ -142,11 +151,12 @@ const Navigation = () => {
           screens: {
             Home: 'home',
             Explore: 'explore',
-            Add: 'add-listing',
+            Add: 'add',
             Messages: 'messages',
             Profile: 'profile',
           },
         },
+        AddListing: 'add-listing',
         ProfileListings: 'profile/listings',
         ListingDetails: 'listing/:listingId',
         Login: 'auth/login',
@@ -162,6 +172,16 @@ const Navigation = () => {
           <>
             <Stack.Screen name="Main" component={TabNavigator} />
             <Stack.Screen 
+              name="AddListing" 
+              component={AddListingScreen}
+              options={{ 
+                title: 'Add Listing',
+                headerShown: true,
+                headerBackTitle: 'Back',
+                headerBackVisible: true,
+              }}
+            />
+            <Stack.Screen 
               name="ProfileListings" 
               component={ListingsScreen}
               options={{ 
@@ -176,6 +196,8 @@ const Navigation = () => {
               options={{ 
                 title: 'Listing Details',
                 headerShown: true,
+                headerBackTitle: 'Back',
+                headerBackVisible: true,
               }}
             />
           </>

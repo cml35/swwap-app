@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { listingService } from '../services/listingService';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TabParamList } from '../types/navigation';
 import { Item } from '../types';
@@ -27,6 +27,7 @@ type AddListingScreenNavigationProp = NativeStackNavigationProp<TabParamList, 'A
 
 export const AddListingScreen = () => {
   const navigation = useNavigation<AddListingScreenNavigationProp>();
+  const isFocused = useIsFocused();
   const queryClient = useQueryClient();
   const tagInputRef = useRef<TextInput>(null);
 
@@ -123,6 +124,17 @@ export const AddListingScreen = () => {
     createListingMutation.mutate(formData);
   }, [formData, createListingMutation]);
 
+  useEffect(() => {
+    if (isFocused) {
+      navigation.setOptions({
+        headerShown: true,
+        headerTitle: 'Add Listing',
+        headerBackTitle: 'Back',
+        headerBackVisible: true,
+      });
+    }
+  }, [isFocused, navigation]);
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -130,16 +142,6 @@ export const AddListingScreen = () => {
     >
       <ScrollView style={styles.scrollView}>
         <View style={styles.formContainer}>
-          {/* Header with Back button only */}
-          <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-            >
-              <Ionicons name="arrow-back" size={24} color="#007AFF" />
-            </TouchableOpacity>
-          </View>
-
           {/* Listing Title */}
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Listing Title</Text>
@@ -266,9 +268,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 20,
-  },
-  backButton: {
-    padding: 8,
   },
   bottomButtonContainer: {
     position: 'absolute',

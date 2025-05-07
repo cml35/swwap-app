@@ -38,6 +38,7 @@ export const ListingDetailsScreen = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [currentTag, setCurrentTag] = useState('');
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const tagInputRef = useRef<TextInput>(null);
 
   const { data: listing, isLoading, error } = useQuery<Item>({
@@ -117,6 +118,22 @@ export const ListingDetailsScreen = () => {
     });
   }, [listing?.tags, updateListingMutation]);
 
+  const handlePreviousImage = useCallback(() => {
+    if (listing?.images && listing.images.length > 0) {
+      setCurrentImageIndex((prevIndex) => 
+        prevIndex === 0 ? listing.images.length - 1 : prevIndex - 1
+      );
+    }
+  }, [listing?.images]);
+
+  const handleNextImage = useCallback(() => {
+    if (listing?.images && listing.images.length > 0) {
+      setCurrentImageIndex((prevIndex) => 
+        prevIndex === listing.images.length - 1 ? 0 : prevIndex + 1
+      );
+    }
+  }, [listing?.images]);
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -143,12 +160,6 @@ export const ListingDetailsScreen = () => {
         <View style={styles.formContainer}>
           {/* Header with Edit/Save buttons */}
           <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-            >
-              <Ionicons name="arrow-back" size={24} color="#007AFF" />
-            </TouchableOpacity>
             {isEditing ? (
               <TouchableOpacity
                 style={styles.saveButton}
@@ -169,148 +180,168 @@ export const ListingDetailsScreen = () => {
             )}
           </View>
 
-          {/* Listing Title */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Listing Title</Text>
-            {isEditing ? (
-              <TextInput
-                style={styles.input}
-                value={listing?.title}
-                onChangeText={(text) => updateListingMutation.mutate({ ...listing, title: text })}
-                placeholder="Enter listing title"
-                placeholderTextColor="#999"
-                maxLength={100}
-              />
-            ) : (
-              <Text style={styles.text}>{listing?.title}</Text>
-            )}
-          </View>
-
-          {/* Description */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Description</Text>
-            {isEditing ? (
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={listing?.description}
-                onChangeText={(text) => updateListingMutation.mutate({ ...listing, description: text })}
-                placeholder="Describe your item"
-                placeholderTextColor="#999"
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
-            ) : (
-              <Text style={styles.text}>{listing?.description}</Text>
-            )}
-          </View>
-
-          {/* Condition */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Condition</Text>
-            {isEditing ? (
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={listing?.condition}
-                  onValueChange={(value: Condition) => updateListingMutation.mutate({ ...listing, condition: value })}
-                  style={styles.picker}
-                  mode="dialog"
-                  dropdownIconColor="#333"
-                >
-                  <Picker.Item label="New" value="New" />
-                  <Picker.Item label="Like New" value="Like New" />
-                  <Picker.Item label="Good" value="Good" />
-                  <Picker.Item label="Fair" value="Fair" />
-                  <Picker.Item label="Poor" value="Poor" />
-                </Picker>
+          <View style={styles.contentContainer}>
+            {/* Left Column - Listing Details */}
+            <View style={styles.leftColumn}>
+              {/* Listing Title */}
+              <View style={styles.inputContainer}>
+                {isEditing ? (
+                  <>
+                    <Text style={styles.label}>Listing Title</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={listing?.title}
+                      onChangeText={(text) => updateListingMutation.mutate({ ...listing, title: text })}
+                      placeholder="Enter listing title"
+                      placeholderTextColor="#999"
+                      maxLength={100}
+                    />
+                  </>
+                ) : (
+                  <Text style={styles.titleText}>{listing?.title}</Text>
+                )}
               </View>
-            ) : (
-              <Text style={styles.text}>{listing?.condition}</Text>
-            )}
-          </View>
 
-          {/* Image Gallery or Image Upload Zone */}
-          {isEditing ? (
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Images</Text>
-              <ImageUploadZone
-                onImagesSelected={handleImagesSelected}
-                maxFiles={5}
-                initialImages={selectedImages}
-              />
-            </View>
-          ) : (
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Images</Text>
-              {listing?.images && listing.images.length > 0 ? (
-                <View style={styles.imageGalleryContainer}>
-                  <ScrollView 
-                    horizontal 
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.imageGallery}
-                  >
-                    {listing.images.map((imageUrl, index) => (
-                      <View key={index} style={styles.imageWrapper}>
-                        <Image
-                          source={{ uri: imageUrl }}
-                          style={styles.image}
-                          resizeMode="contain"
-                        />
-                      </View>
-                    ))}
-                  </ScrollView>
-                </View>
-              ) : (
-                <Text style={styles.noImagesText}>No images available</Text>
-              )}
-            </View>
-          )}
-
-          {/* Tags Section */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Tags</Text>
-            {isEditing ? (
-              <>
-                <View style={styles.tagInputContainer}>
+              {/* Description */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Description</Text>
+                {isEditing ? (
                   <TextInput
-                    ref={tagInputRef}
-                    style={styles.tagInput}
-                    value={currentTag}
-                    onChangeText={setCurrentTag}
-                    placeholder="Add a tag"
+                    style={[styles.input, styles.textArea]}
+                    value={listing?.description}
+                    onChangeText={(text) => updateListingMutation.mutate({ ...listing, description: text })}
+                    placeholder="Describe your item"
                     placeholderTextColor="#999"
-                    onSubmitEditing={handleAddTag}
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
                   />
-                  <TouchableOpacity
-                    style={styles.addTagButton}
-                    onPress={handleAddTag}
-                  >
-                    <Ionicons name="add-circle" size={24} color="#007AFF" />
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.tagsContainer}>
-                  {listing?.tags.map((tag, index) => (
-                    <View key={index} style={styles.tag}>
-                      <Text style={styles.tagText}>#{tag}</Text>
+                ) : (
+                  <Text style={styles.text}>{listing?.description}</Text>
+                )}
+              </View>
+
+              {/* Condition */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Condition</Text>
+                {isEditing ? (
+                  <View style={styles.pickerContainer}>
+                    <Picker
+                      selectedValue={listing?.condition}
+                      onValueChange={(value: Condition) => updateListingMutation.mutate({ ...listing, condition: value })}
+                      style={styles.picker}
+                      mode="dialog"
+                      dropdownIconColor="#333"
+                    >
+                      <Picker.Item label="New" value="New" />
+                      <Picker.Item label="Like New" value="Like New" />
+                      <Picker.Item label="Good" value="Good" />
+                      <Picker.Item label="Fair" value="Fair" />
+                      <Picker.Item label="Poor" value="Poor" />
+                    </Picker>
+                  </View>
+                ) : (
+                  <Text style={styles.text}>{listing?.condition}</Text>
+                )}
+              </View>
+
+              {/* Tags Section */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Tags</Text>
+                {isEditing ? (
+                  <>
+                    <View style={styles.tagInputContainer}>
+                      <TextInput
+                        ref={tagInputRef}
+                        style={styles.tagInput}
+                        value={currentTag}
+                        onChangeText={setCurrentTag}
+                        placeholder="Add a tag"
+                        placeholderTextColor="#999"
+                        onSubmitEditing={handleAddTag}
+                      />
                       <TouchableOpacity
-                        onPress={() => handleRemoveTag(tag)}
-                        style={styles.removeTagButton}
+                        style={styles.addTagButton}
+                        onPress={handleAddTag}
                       >
-                        <Ionicons name="close-circle" size={16} color="#666" />
+                        <Ionicons name="add-circle" size={24} color="#007AFF" />
                       </TouchableOpacity>
                     </View>
-                  ))}
-                </View>
-              </>
-            ) : (
-              <View style={styles.tagsContainer}>
-                {listing?.tags.map((tag, index) => (
-                  <View key={index} style={styles.tag}>
-                    <Text style={styles.tagText}>#{tag}</Text>
+                    <View style={styles.tagsContainer}>
+                      {listing?.tags.map((tag, index) => (
+                        <View key={index} style={styles.tag}>
+                          <Text style={styles.tagText}>#{tag}</Text>
+                          <TouchableOpacity
+                            onPress={() => handleRemoveTag(tag)}
+                            style={styles.removeTagButton}
+                          >
+                            <Ionicons name="close-circle" size={16} color="#666" />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
+                  </>
+                ) : (
+                  <View style={styles.tagsContainer}>
+                    {listing?.tags.map((tag, index) => (
+                      <View key={index} style={styles.tag}>
+                        <Text style={styles.tagText}>#{tag}</Text>
+                      </View>
+                    ))}
                   </View>
-                ))}
+                )}
               </View>
-            )}
+            </View>
+
+            {/* Right Column - Image Gallery */}
+            <View style={styles.rightColumn}>
+              {isEditing ? (
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Images</Text>
+                  <ImageUploadZone
+                    onImagesSelected={handleImagesSelected}
+                    maxFiles={5}
+                    initialImages={selectedImages}
+                  />
+                </View>
+              ) : (
+                <View style={styles.imageGalleryContainer}>
+                  {listing?.images && listing.images.length > 0 ? (
+                    <>
+                      <Text style={styles.label}>Images</Text>
+                      <View style={styles.imageNavigationContainer}>
+                        <TouchableOpacity
+                          style={styles.navigationButton}
+                          onPress={handlePreviousImage}
+                        >
+                          <Ionicons name="chevron-back" size={32} color="#007AFF" />
+                        </TouchableOpacity>
+                        
+                        <View style={styles.imageWrapper}>
+                          <Image
+                            source={{ uri: listing.images[currentImageIndex] }}
+                            style={styles.image}
+                            resizeMode="contain"
+                          />
+                        </View>
+
+                        <TouchableOpacity
+                          style={styles.navigationButton}
+                          onPress={handleNextImage}
+                        >
+                          <Ionicons name="chevron-forward" size={32} color="#007AFF" />
+                        </TouchableOpacity>
+                      </View>
+                      <Text style={styles.imageCounter}>
+                        {currentImageIndex + 1} / {listing.images.length}
+                      </Text>
+                    </>
+                  ) : (
+                    <Text style={styles.noImagesText}>No images available</Text>
+                  )}
+                </View>
+              )}
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -331,14 +362,18 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
-    marginBottom: 20,
-  },
-  backButton: {
-    padding: 8,
+    marginBottom: 0,
+    paddingHorizontal: 8,
   },
   editButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  saveButton: {
     backgroundColor: '#007AFF',
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -348,12 +383,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-  },
-  saveButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
   },
   saveButtonText: {
     color: '#fff',
@@ -381,6 +410,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     padding: 12,
+  },
+  titleText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 16,
   },
   textArea: {
     height: 100,
@@ -465,23 +500,54 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     padding: 12,
   },
+  contentContainer: {
+    flexDirection: 'row',
+    padding: 16,
+    paddingTop: 0,
+  },
+  leftColumn: {
+    flex: 1,
+    marginRight: 16,
+  },
+  rightColumn: {
+    width: Dimensions.get('window').width * 0.5,
+  },
+  imageGalleryWrapper: {
+    display: 'none', // Remove the absolute positioning wrapper
+  },
   imageGalleryContainer: {
     marginBottom: 20,
   },
-  imageGallery: {
+  imageNavigationContainer: {
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    padding: 8,
+  },
+  navigationButton: {
+    padding: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 20,
+    zIndex: 1,
   },
   imageWrapper: {
-    width: 300,
-    height: 300,
-    marginRight: 10,
+    width: Dimensions.get('window').width * 0.4,
+    height: Dimensions.get('window').width * 0.4,
     borderRadius: 8,
     overflow: 'hidden',
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#fff',
   },
   image: {
     width: '100%',
     height: '100%',
     resizeMode: 'contain',
+  },
+  imageCounter: {
+    textAlign: 'center',
+    marginTop: 8,
+    fontSize: 14,
+    color: '#666',
   },
 }); 

@@ -32,11 +32,9 @@ export const ListingsScreen = () => {
 
   const removeMutation = useMutation({
     mutationFn: (id: string) => {
-      console.log('ListingsScreen - removeMutation.mutationFn called with id:', id);
       return listingService.removeListing(id);
     },
     onSuccess: () => {
-      console.log('ListingsScreen - removeMutation.onSuccess called');
       queryClient.invalidateQueries({ queryKey: ['listings'] });
       Toast.show({
         type: 'success',
@@ -44,7 +42,6 @@ export const ListingsScreen = () => {
       });
     },
     onError: (error) => {
-      console.log('ListingsScreen - removeMutation.onError called:', error);
       Toast.show({
         type: 'error',
         text1: 'Failed to remove listing',
@@ -54,16 +51,11 @@ export const ListingsScreen = () => {
   });
 
   const handleRemove = (id: string) => {
-    console.log('ListingsScreen - handleRemove clicked for id:', id);
-    
     if (Platform.OS === 'web') {
       // Use window.confirm for web
       const confirmed = window.confirm('Are you sure you want to remove this listing?');
       if (confirmed) {
-        console.log('ListingsScreen - Remove confirmed, calling mutation');
         removeMutation.mutate(id);
-      } else {
-        console.log('ListingsScreen - Remove cancelled');
       }
     } else {
       // Use React Native Alert for mobile
@@ -91,7 +83,7 @@ export const ListingsScreen = () => {
     }
   };
 
-  const renderListing = ({ item }: { item: Item }) => (
+  const renderListing = ({ item }: { item: Item }) => ( 
     <View style={styles.listingItem}>
       <TouchableOpacity
         style={styles.listingContent}
