@@ -1,0 +1,64 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String    @id @default(uuid())
+  email       String    @unique
+  password    String
+  firstName   String?
+  lastName    String?
+  resetToken  String?   @unique
+  verifyToken String?   @unique
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  listings    Listing[]
+  sentProposals     SwwapTransaction[] @relation("SentProposals")
+  receivedProposals SwwapTransaction[] @relation("ReceivedProposals")
+
+  @@map("users")
+}
+
+model Listing {
+  id          String    @id @default(uuid())
+  title       String
+  description String
+  condition   String
+  tags        String[]
+  images      String[]
+  userId      String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id])
+  sentProposals     SwwapTransaction[] @relation("FromItem")
+  receivedProposals SwwapTransaction[] @relation("ToItem")
+
+  @@map("listings")
+}
+
+model SwwapTransaction {
+  id          String   @id @default(uuid())
+  fromUserId  String
+  toUserId    String
+  fromItemId  String
+  toItemId    String
+  status      String   @default("pending") // pending, accepted, rejected
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  fromUser    User     @relation("SentProposals", fields: [fromUserId], references: [id])
+  toUser      User     @relation("ReceivedProposals", fields: [toUserId], references: [id])
+  fromItem    Listing  @relation("FromItem", fields: [fromItemId], references: [id])
+  toItem      Listing  @relation("ToItem", fields: [toItemId], references: [id])
+
+  @@map("swwap_transactions")
+} 

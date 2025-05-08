@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -12,6 +12,7 @@ import { ProfileScreen } from './src/screens/ProfileScreen';
 import { AddListingScreen } from './src/screens/AddListingScreen';
 import { ListingsScreen } from './src/screens/ListingsScreen';
 import { ListingDetailsScreen } from './src/screens/ListingDetailsScreen';
+import { ListingView } from './src/screens/ListingView';
 import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
 import { SettingsScreen } from './src/screens/SettingsScreen';
@@ -158,6 +159,7 @@ const Navigation = () => {
         AccountSettings: 'settings/account',
         ProfileListings: 'profile/listings',
         ListingDetails: 'listing/:listingId',
+        ListingView: 'listing/view/:listingId',
         Login: 'auth/login',
         SignUp: 'auth/signup',
       },
@@ -207,6 +209,16 @@ const Navigation = () => {
                 headerBackVisible: true,
               }}
             />
+            <Stack.Screen 
+              name="ListingView" 
+              component={ListingView}
+              options={{ 
+                title: 'Listing',
+                headerShown: true,
+                headerBackTitle: 'Back',
+                headerBackVisible: true,
+              }}
+            />
           </>
         ) : (
           <>
@@ -233,10 +245,37 @@ const Navigation = () => {
   );
 };
 
+// Token expiration handler component
+const TokenExpirationHandler = () => {
+  const { logout } = useAuth();
+
+  useEffect(() => {
+    const handleTokenExpired = () => {
+      console.log('Token expired, logging out...');
+      logout();
+      Toast.show({
+        type: 'error',
+        text1: 'Session Expired',
+        text2: 'Please login again',
+      });
+    };
+
+    // Listen for token expiration event
+    window.addEventListener('auth:tokenExpired', handleTokenExpired);
+
+    return () => {
+      window.removeEventListener('auth:tokenExpired', handleTokenExpired);
+    };
+  }, [logout]);
+
+  return null;
+};
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <TokenExpirationHandler />
         <Navigation />
         <Toast />
       </AuthProvider>

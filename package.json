@@ -1,41 +1,29 @@
 {
-  "name": "swwap-app",
+  "name": "swwap-transaction",
   "version": "1.0.0",
-  "main": "index.ts",
+  "description": "Swwap Transaction Service for handling item swaps",
+  "main": "build/server.js",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web"
   },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
-    "@expo/metro-runtime": "~5.0.4",
-    "@expo/vector-icons": "^14.1.0",
-    "@react-native-async-storage/async-storage": "^2.1.2",
-    "@react-native-picker/picker": "^2.11.0",
-    "@react-navigation/bottom-tabs": "^6.5.11",
-    "@react-navigation/native": "^6.1.9",
-    "@react-navigation/native-stack": "^6.9.17",
-    "@tanstack/react-query": "^5.74.11",
-    "@types/react-native-web": "0.19.1",
-    "expo": "~53.0.4",
-    "expo-image-picker": "~16.1.4",
-    "expo-status-bar": "~2.2.3",
-    "metro": "^0.82.2",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "react-native": "^0.79.1",
-    "react-native-safe-area-context": "^5.3.0",
-    "react-native-screens": "~4.10.0",
-    "react-native-toast-message": "^2.3.0",
-    "react-native-web": "^0.20.0",
-    "zod": "^3.24.3",
-    "expo-image-manipulator": "~13.1.5"
+    "@prisma/client": "^5.10.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.0",
+    "express": "^4.18.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.25.2",
-    "@types/react": "~19.0.10",
-    "typescript": "~5.8.3"
-  },
-  "private": true
+    "@types/cors": "^2.8.0",
+    "@types/express": "^4.17.0",
+    "@types/node": "^20.0.0",
+    "prisma": "^5.10.0",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.0.0"
+  }
 }

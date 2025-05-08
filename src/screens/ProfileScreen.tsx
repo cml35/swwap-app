@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform, FlatList, Image, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { authService } from '../services/authService';
@@ -7,12 +7,15 @@ import { RootStackParamList } from '../types/navigation';
 import { useAuth } from '../context/AuthContext';
 import { useMutation } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
+import { useUserListings } from '../hooks/useUserListings';
+import { Item } from '../types';
 
 type ProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Profile'>;
 
 export const ProfileScreen = () => {
   const navigation = useNavigation<ProfileScreenNavigationProp>();
   const { user, logout } = useAuth();
+  const { data: listings, isLoading, error } = useUserListings();
 
   const logoutMutation = useMutation({
     mutationKey: ['logout'],
@@ -56,48 +59,107 @@ export const ProfileScreen = () => {
     );
   };
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.content}>
-        {/* User Info Section */}
-        <View style={styles.section}>
-          <View style={styles.userInfo}>
-            <View style={styles.avatarContainer}>
-              <Text style={styles.avatarText}>
-                {user?.firstName?.[0]}{user?.lastName?.[0]}
-              </Text>
-            </View>
-            <Text style={styles.name}>{user?.firstName} {user?.lastName}</Text>
-            <Text style={styles.email}>{user?.email}</Text>
-          </View>
-        </View>
-
-        {/* Settings Section */}
-        <View style={styles.section}>
-          <TouchableOpacity 
-            style={styles.menuItem}
-            onPress={() => navigation.navigate('Settings')}
-          >
-            <Ionicons name="settings-outline" size={24} color="#333" style={styles.menuIcon} />
-            <Text style={styles.menuText}>Settings</Text>
-            <Ionicons name="chevron-forward" size={24} color="#999" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Logout Section */}
-        <View style={styles.section}>
-          <TouchableOpacity 
-            style={[styles.button, styles.logoutButton, logoutMutation.isPending && styles.buttonDisabled]} 
-            onPress={handleLogout}
-            disabled={logoutMutation.isPending}
-          >
-            <Ionicons name="log-out-outline" size={20} color="white" style={styles.buttonIcon} />
-            <Text style={styles.buttonText}>
-              {logoutMutation.isPending ? 'Logging out...' : 'Logout'}
-            </Text>
-          </TouchableOpacity>
+  const renderFeedItem = ({ item }: { item: Item }) => (
+    <TouchableOpacity 
+      style={styles.feedItem}
+      onPress={() => navigation.navigate('ListingView', { listingId: item.id })}
+    >
+      <Image 
+        source={{ uri: item.images[0] || 'https://via.placeholder.com/150' }} 
+        style={styles.feedImage} 
+      />
+      <View style={styles.listingInfo}>
+        <Text style={styles.feedItemTitle} numberOfLines={1}>{item.title}</Text>
+        <View style={styles.listingStatus}>
+          <Ionicons 
+            name="time" 
+            size={14} 
+            color="#666"
+          />
+          <Text style={styles.statusText}>Active</Text>
         </View>
       </View>
+    </TouchableOpacity>
+  );
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>Error loading listings</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      {/* Profile Header */}
+      <View style={styles.header}>
+        <View style={styles.profileInfo}>
+          <View style={styles.avatarContainer}>
+            <Text style={styles.avatarText}>
+              {user?.firstName?.[0]}{user?.lastName?.[0]}
+            </Text>
+          </View>
+          <View style={styles.statsContainer}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{listings?.length || 0}</Text>
+              <Text style={styles.statLabel}>Listings</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{listings?.filter(l => l.status === 'active').length || 0}</Text>
+              <Text style={styles.statLabel}>Active</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{listings?.filter(l => l.status === 'pending_swwap').length || 0}</Text>
+              <Text style={styles.statLabel}>Pending</Text>
+            </View>
+          </View>
+        </View>
+        <Text style={styles.name}>{user?.firstName} {user?.lastName}</Text>
+        <Text style={styles.email}>{user?.email}</Text>
+      </View>
+
+      {/* Action Buttons */}
+      <View style={styles.actionButtons}>
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={() => navigation.navigate('Settings')}
+        >
+          <Ionicons name="settings-outline" size={20} color="#333" />
+          <Text style={styles.actionButtonText}>Settings</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.actionButton, styles.logoutButton]}
+          onPress={handleLogout}
+        >
+          <Ionicons name="log-out-outline" size={20} color="#ff4444" />
+          <Text style={[styles.actionButtonText, styles.logoutButtonText]}>Logout</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Feed Content */}
+      <FlatList
+        data={listings}
+        renderItem={renderFeedItem}
+        keyExtractor={item => item.id}
+        numColumns={3}
+        contentContainerStyle={styles.feedContainer}
+        columnWrapperStyle={styles.feedRow}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Ionicons name="list-outline" size={48} color="#ccc" />
+            <Text style={styles.emptyText}>No listings yet</Text>
+          </View>
+        }
+      />
     </View>
   );
 };
@@ -107,15 +169,101 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  content: {
-    flex: 1,
-    padding: 20,
-  },
-  section: {
+  header: {
     backgroundColor: 'white',
-    borderRadius: 10,
     padding: 20,
-    marginBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  profileInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  avatarContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 20,
+  },
+  avatarText: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  statsContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+  },
+  name: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  email: {
+    fontSize: 14,
+    color: '#666',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    padding: 16,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    marginHorizontal: 8,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+  },
+  actionButtonText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#333',
+  },
+  logoutButton: {
+    backgroundColor: '#fff0f0',
+  },
+  logoutButtonText: {
+    color: '#ff4444',
+  },
+  feedContainer: {
+    padding: 4,
+  },
+  feedRow: {
+    justifyContent: 'flex-start',
+    gap: 4,
+    paddingHorizontal: 4,
+  },
+  feedItem: {
+    width: '32%',
+    marginBottom: 8,
+    backgroundColor: 'white',
+    borderRadius: 8,
+    overflow: 'hidden',
     ...Platform.select({
       web: {
         boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
@@ -125,65 +273,55 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  userInfo: {
-    alignItems: 'center',
+  feedImage: {
+    width: '100%',
+    aspectRatio: 1,
+    backgroundColor: '#f0f0f0',
   },
-  avatarContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#007AFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
+  listingInfo: {
+    padding: 8,
   },
-  avatarText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: 'white',
-  },
-  name: {
-    fontSize: 24,
-    fontWeight: 'bold',
+  feedItemTitle: {
+    fontSize: 12,
+    fontWeight: '600',
     color: '#333',
-    marginBottom: 8,
+    marginBottom: 4,
   },
-  email: {
+  listingStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusText: {
+    fontSize: 10,
+    color: '#666',
+    marginLeft: 2,
+  },
+  pendingStatus: {
+    color: '#007AFF',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    padding: 32,
+  },
+  emptyText: {
+    marginTop: 16,
     fontSize: 16,
     color: '#666',
   },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  menuIcon: {
-    marginRight: 12,
-  },
-  menuText: {
+  loadingContainer: {
     flex: 1,
-    fontSize: 16,
-    color: '#333',
-  },
-  button: {
-    flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    padding: 15,
-    borderRadius: 8,
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
   },
-  logoutButton: {
-    backgroundColor: '#ff4444',
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
   },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: 'white',
+  errorText: {
+    color: '#ff4444',
     fontSize: 16,
-    fontWeight: '600',
-  },
-  buttonIcon: {
-    marginRight: 8,
   },
 }); 

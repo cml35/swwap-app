@@ -7,6 +7,7 @@ export interface Item {
   condition: 'New' | 'Like New' | 'Good' | 'Fair' | 'Poor';
   userId: string;
   createdAt: string;
+  status: 'active' | 'pending_swwap' | 'completed';
   location: {
     latitude: number;
     longitude: number;

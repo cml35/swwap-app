@@ -5,9 +5,13 @@ export type RootStackParamList = {
   
   // Main app routes
   Main: undefined;
+  Profile: undefined;
   AddListing: undefined;
   ProfileListings: undefined;
   ListingDetails: {
+    listingId: string;
+  };
+  ListingView: {
     listingId: string;
   };
   Settings: undefined;
