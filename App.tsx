@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -233,10 +233,37 @@ const Navigation = () => {
   );
 };
 
+// Token expiration handler component
+const TokenExpirationHandler = () => {
+  const { logout } = useAuth();
+
+  useEffect(() => {
+    const handleTokenExpired = () => {
+      console.log('Token expired, logging out...');
+      logout();
+      Toast.show({
+        type: 'error',
+        text1: 'Session Expired',
+        text2: 'Please login again',
+      });
+    };
+
+    // Listen for token expiration event
+    window.addEventListener('auth:tokenExpired', handleTokenExpired);
+
+    return () => {
+      window.removeEventListener('auth:tokenExpired', handleTokenExpired);
+    };
+  }, [logout]);
+
+  return null;
+};
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <TokenExpirationHandler />
         <Navigation />
         <Toast />
       </AuthProvider>
